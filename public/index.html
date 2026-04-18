@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="GPS Location Accuracy Tester — Prototype app to verify GPS coordinates and backend logging." />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>GPS Location Tester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell" id="app">
+
+    <!-- Screen 1: Name Entry -->
+    <div class="screen active" id="screen-name">
+      <div class="screen-inner">
+        <div class="brand-area">
+          <div class="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="22" fill="url(#grad1)" />
+              <path d="M24 12C19.582 12 16 15.582 16 20c0 7 8 16 8 16s8-9 8-16c0-4.418-3.582-8-8-8z" fill="white" fill-opacity="0.95"/>
+              <circle cx="24" cy="20" r="3.5" fill="url(#grad1)"/>
+              <defs>
+                <linearGradient id="grad1" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#6366f1"/>
+                  <stop offset="1" stop-color="#06b6d4"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1 class="brand-title">GPS Tester</h1>
+          <p class="brand-subtitle">Location Accuracy Prototype</p>
+        </div>
+
+        <div class="card entry-card">
+          <h2 class="card-title">Who are you?</h2>
+          <p class="card-desc">Enter your name to tag your location data.</p>
+          <div class="input-group">
+            <label for="user-name" class="input-label">Your Name</label>
+            <input
+              id="user-name"
+              type="text"
+              class="text-input"
+              placeholder="e.g. Mashood"
+              autocomplete="name"
+              maxlength="50"
+            />
+          </div>
+          <button class="btn btn-primary" id="btn-continue" onclick="handleContinue()">
+            <span class="btn-text">Continue</span>
+            <span class="btn-icon" aria-hidden="true">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: GPS Capture -->
+    <div class="screen" id="screen-gps">
+      <div class="screen-inner">
+        <header class="top-bar">
+          <button class="back-btn" id="btn-back" onclick="handleBack()" aria-label="Go back">← Back</button>
+          <span class="top-bar-name" id="display-username"></span>
+        </header>
+
+        <div class="hero-section">
+          <div class="pulse-ring" id="pulse-ring" aria-hidden="true">
+            <div class="pulse-core">
+              <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="28" height="28">
+                <path d="M16 4C11.582 4 8 7.582 8 12c0 7 8 16 8 16s8-9 8-16c0-4.418-3.582-8-8-8z" fill="white" fill-opacity="0.9"/>
+                <circle cx="16" cy="12" r="3" fill="#6366f1"/>
+              </svg>
+            </div>
+          </div>
+          <h2 class="hero-title" id="hero-title">Ready to Capture</h2>
+          <p class="hero-subtitle" id="hero-subtitle">Tap the button below to get your GPS coordinates.</p>
+        </div>
+
+        <!-- Coordinates Display Card -->
+        <div class="card coords-card hidden" id="coords-card">
+          <div class="coords-header">
+            <span class="coords-badge" id="accuracy-badge">📍 GPS Captured</span>
+          </div>
+          <div class="coords-grid">
+            <div class="coord-item">
+              <span class="coord-label">Latitude</span>
+              <span class="coord-value" id="val-lat">—</span>
+            </div>
+            <div class="coord-item">
+              <span class="coord-label">Longitude</span>
+              <span class="coord-value" id="val-lng">—</span>
+            </div>
+            <div class="coord-item full-width">
+              <span class="coord-label">Accuracy</span>
+              <span class="coord-value" id="val-accuracy">—</span>
+            </div>
+            <div class="coord-item full-width">
+              <span class="coord-label">Timestamp</span>
+              <span class="coord-value small" id="val-timestamp">—</span>
+            </div>
+          </div>
+          <a class="map-link" id="map-link" href="#" target="_blank" rel="noopener">
+            🗺️ View on Google Maps
+          </a>
+        </div>
+
+        <!-- Geofence Result -->
+        <div class="geofence-result hidden" id="geofence-result">
+          <div class="gf-icon" id="gf-icon"></div>
+          <div class="gf-body">
+            <span class="gf-verdict" id="gf-verdict"></span>
+            <span class="gf-detail" id="gf-detail"></span>
+          </div>
+        </div>
+
+        <!-- Status Message -->
+        <div class="status-msg hidden" id="status-msg" role="alert"></div>
+
+        <!-- Main Action Button -->
+        <div class="action-area">
+          <button class="btn btn-gps" id="btn-send" onclick="handleSendLocation()">
+            <span class="btn-icon-large" aria-hidden="true">📡</span>
+            <span class="btn-text">Send My Location</span>
+          </button>
+          <p class="permission-note">Requires GPS / Location permission</p>
+        </div>
+
+        <!-- Logs Panel -->
+        <div class="logs-panel" id="logs-panel">
+          <div class="logs-header">
+            <span class="logs-title">Session Log</span>
+            <span class="logs-count" id="logs-count">0 entries</span>
+          </div>
+          <div class="logs-list" id="logs-list">
+            <p class="logs-empty">No entries yet. Send a location to begin.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
