@@ -588,53 +588,65 @@ html, body {
   font-weight: 600;
 }
 
-/* ─── Geofence Result ────────────────────────────────────────────────────── */
-.geofence-result {
+/* ─── Error Fallback Block ───────────────────────────────────────────────── */
+.status-msg.error { text-align: left; }
+
+.err-block {
   display: flex;
-  align-items: center;
   gap: 14px;
-  padding: 16px 18px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid;
-  animation: slide-up 0.35s ease;
+  align-items: flex-start;
 }
 
-.geofence-result.inside {
-  background: var(--success-bg);
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.geofence-result.outside {
-  background: var(--error-bg);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.gf-icon {
-  font-size: 2rem;
+.err-icon {
+  font-size: 1.8rem;
   line-height: 1;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.gf-body {
+.err-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
-.gf-verdict {
-  font-size: 1rem;
+.err-title {
+  font-size: 0.95rem;
   font-weight: 800;
-  letter-spacing: -0.2px;
+  color: var(--error);
+  display: block;
 }
 
-.geofence-result.inside  .gf-verdict { color: var(--success); }
-.geofence-result.outside .gf-verdict { color: var(--error); }
-
-.gf-detail {
-  font-size: 0.78rem;
+.err-desc {
+  font-size: 0.8rem;
   color: var(--text-2);
-  line-height: 1.4;
+  line-height: 1.5;
+  font-weight: 400;
 }
+
+.err-retry-btn {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: var(--error);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.err-retry-btn:hover { background: rgba(239,68,68,0.25); }
+
+.log-entry-accuracy {
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+.log-entry-accuracy span { color: var(--warn); font-weight: 600; }
 
 /* ─── Utility ────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }

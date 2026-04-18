@@ -4,75 +4,7 @@
 
 const API_URL = '/api/location';
 
-// ─── House Geofence Polygon (ABCD) ──────────────────────────────────────────
-// Your house corners in order: A → B → C → D
-const HOUSE_POLYGON = [
-  { lat: 11.150816, lng: 75.898068, label: 'A' },
-  { lat: 11.150844, lng: 75.897984, label: 'B' },
-  { lat: 11.150740, lng: 75.897960, label: 'C' },
-  { lat: 11.150717, lng: 75.898027, label: 'D' },
-];
-
-// Ray-casting point-in-polygon algorithm
-function isPointInPolygon(lat, lng, polygon) {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].lng, yi = polygon[i].lat;
-    const xj = polygon[j].lng, yj = polygon[j].lat;
-    const intersect = ((yi > lat) !== (yj > lat)) &&
-      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-// Haversine distance in meters between two lat/lng points
-function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const toRad = d => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// Centroid of the house polygon
-function polygonCentroid(polygon) {
-  const lat = polygon.reduce((s, p) => s + p.lat, 0) / polygon.length;
-  const lng = polygon.reduce((s, p) => s + p.lng, 0) / polygon.length;
-  return { lat, lng };
-}
-
-function showGeofenceResult(capturedLat, capturedLng, gpsAccuracy) {
-  const inside = isPointInPolygon(capturedLat, capturedLng, HOUSE_POLYGON);
-  const center = polygonCentroid(HOUSE_POLYGON);
-  const distFromCenter = haversineDistance(capturedLat, capturedLng, center.lat, center.lng);
-
-  const el = document.getElementById('geofence-result');
-  const icon = document.getElementById('gf-icon');
-  const verdict = document.getElementById('gf-verdict');
-  const detail = document.getElementById('gf-detail');
-
-  el.className = `geofence-result ${inside ? 'inside' : 'outside'}`;
-
-  if (inside) {
-    icon.textContent = '🏠';
-    verdict.textContent = '✅ INSIDE the House';
-    detail.textContent = `GPS is within the ABCD boundary. ~${distFromCenter.toFixed(1)}m from centre.`;
-  } else {
-    icon.textContent = '📍';
-    verdict.textContent = '❌ OUTSIDE the House';
-    const accuracyNote = gpsAccuracy
-      ? ` (GPS accuracy: ±${gpsAccuracy.toFixed(0)}m)`
-      : '';
-    detail.textContent = `~${distFromCenter.toFixed(1)}m from house centre${accuracyNote}.`;
-  }
-
-  el.classList.remove('hidden');
-}
-
-
+let currentUser = '';
 let sessionLog = [];
 let sessionCount = 0;
 
@@ -91,9 +23,7 @@ function showScreen(id) {
     }
   });
 
-  setTimeout(() => {
-    target.classList.add('active');
-  }, 50);
+  setTimeout(() => target.classList.add('active'), 50);
 }
 
 // ─── Screen 1: Name Entry ────────────────────────────────────────────────────
@@ -118,22 +48,21 @@ function handleContinue() {
   showScreen('screen-gps');
 }
 
-// Allow pressing Enter to continue
-document.getElementById('user-name').addEventListener('keydown', (e) => {
+document.getElementById('user-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') handleContinue();
 });
 
-// ─── Screen 2: GPS / Back ────────────────────────────────────────────────────
+// ─── Back ────────────────────────────────────────────────────────────────────
 
 function handleBack() {
   showScreen('screen-name');
 }
 
-// ─── Status UI Helpers ───────────────────────────────────────────────────────
+// ─── Status / Hero Helpers ───────────────────────────────────────────────────
 
 function setStatus(type, msg) {
   const el = document.getElementById('status-msg');
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.className = `status-msg ${type}`;
   el.classList.remove('hidden');
 }
@@ -152,34 +81,34 @@ function setHero(title, subtitle) {
 // ─── Coordinates Display ─────────────────────────────────────────────────────
 
 function showCoords(lat, lng, accuracy, timestamp) {
-  const card = document.getElementById('coords-card');
-  document.getElementById('val-lat').textContent = lat.toFixed(7);
-  document.getElementById('val-lng').textContent = lng.toFixed(7);
+  document.getElementById('val-lat').textContent      = lat.toFixed(7);
+  document.getElementById('val-lng').textContent      = lng.toFixed(7);
   document.getElementById('val-accuracy').textContent =
-    accuracy ? `±${accuracy.toFixed(1)} meters` : 'Unknown';
+    accuracy != null ? `±${accuracy.toFixed(1)} meters` : 'Unknown';
 
   const ts = new Date(timestamp);
   document.getElementById('val-timestamp').textContent =
     ts.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
 
-  const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-  document.getElementById('map-link').href = mapUrl;
+  document.getElementById('map-link').href =
+    `https://www.google.com/maps?q=${lat},${lng}`;
 
-  card.classList.remove('hidden');
+  document.getElementById('coords-card').classList.remove('hidden');
 }
 
 // ─── Session Log ─────────────────────────────────────────────────────────────
 
-function addLogEntry(lat, lng, timestamp) {
+function addLogEntry(lat, lng, accuracy, timestamp) {
   sessionCount++;
-  sessionLog.push({ sessionCount, lat, lng, timestamp });
+  sessionLog.push({ sessionCount, lat, lng, accuracy, timestamp });
 
-  const list = document.getElementById('logs-list');
+  const list  = document.getElementById('logs-list');
   const empty = list.querySelector('.logs-empty');
   if (empty) empty.remove();
 
-  const ts = new Date(timestamp);
+  const ts      = new Date(timestamp);
   const timeStr = ts.toLocaleTimeString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' });
+  const accStr  = accuracy != null ? `±${accuracy.toFixed(0)}m` : '?';
 
   const entry = document.createElement('div');
   entry.className = 'log-entry';
@@ -191,6 +120,7 @@ function addLogEntry(lat, lng, timestamp) {
     <div class="log-entry-coords">
       Lat: <span>${lat.toFixed(6)}</span> &nbsp; Lng: <span>${lng.toFixed(6)}</span>
     </div>
+    <div class="log-entry-accuracy">Accuracy: <span>${accStr}</span></div>
   `;
 
   list.prepend(entry);
@@ -198,52 +128,98 @@ function addLogEntry(lat, lng, timestamp) {
     `${sessionCount} entr${sessionCount === 1 ? 'y' : 'ies'}`;
 }
 
+// ─── Error Fallback UI ───────────────────────────────────────────────────────
+
+const GPS_ERRORS = {
+  PERMISSION: {
+    icon: '🔒',
+    title: 'Permission Denied',
+    desc: 'You blocked location access. To fix this, tap the lock/info icon in your browser address bar and allow Location.',
+    action: null,
+  },
+  UNAVAILABLE: {
+    icon: '📡',
+    title: 'GPS Signal Lost',
+    desc: 'Your device could not determine a position. Try moving outside or enabling GPS in device settings.',
+    action: 'Try Again',
+  },
+  TIMEOUT: {
+    icon: '⏱️',
+    title: 'GPS Timed Out',
+    desc: 'Location took too long to respond. Make sure GPS is enabled and you have a clear sky view.',
+    action: 'Retry',
+  },
+  SERVER: {
+    icon: '☁️',
+    title: 'Server Error',
+    desc: null, // filled dynamically
+    action: 'Try Again',
+  },
+  UNSUPPORTED: {
+    icon: '🚫',
+    title: 'Not Supported',
+    desc: 'Your browser does not support the Geolocation API. Try Chrome or Safari on a modern device.',
+    action: null,
+  },
+};
+
+function showErrorFallback(type, extraMsg = '') {
+  const err = GPS_ERRORS[type];
+  const desc = extraMsg || err.desc;
+
+  setStatus('error', `
+    <div class="err-block">
+      <span class="err-icon">${err.icon}</span>
+      <div class="err-body">
+        <strong class="err-title">${err.title}</strong>
+        <span class="err-desc">${desc}</span>
+        ${err.action ? `<button class="err-retry-btn" onclick="retryLocation()">↻ ${err.action}</button>` : ''}
+      </div>
+    </div>
+  `);
+
+  setHero('Something went wrong', 'See the error below for details.');
+  document.getElementById('pulse-ring').classList.remove('searching');
+  resetButton();
+}
+
+// retry just re-triggers the send
+function retryLocation() {
+  clearStatus();
+  setHero('Ready to Capture', 'Tap the button below to get your GPS coordinates.');
+  handleSendLocation();
+}
+
 // ─── Main Action: Capture & Send Location ────────────────────────────────────
 
 function handleSendLocation() {
-  const btn = document.getElementById('btn-send');
-
   if (!navigator.geolocation) {
-    setStatus('error', '❌ Geolocation is not supported by your browser.');
+    showErrorFallback('UNSUPPORTED');
     return;
   }
 
-  // UI: loading state
+  const btn = document.getElementById('btn-send');
   btn.disabled = true;
   btn.querySelector('.btn-text').textContent = 'Getting GPS…';
   btn.querySelector('.btn-icon-large').textContent = '⏳';
   document.getElementById('pulse-ring').classList.add('searching');
   clearStatus();
   setHero('Acquiring Signal…', 'Please stay still for best accuracy.');
-  setStatus('loading', '📡 Requesting GPS coordinates…');
-
-  // Geolocation options — high accuracy for mobile
-  const geoOptions = {
-    enableHighAccuracy: true,
-    timeout: 15000,
-    maximumAge: 0,
-  };
+  setStatus('loading', '📡 Requesting GPS coordinates from your device…');
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
       const { latitude, longitude, accuracy } = position.coords;
       const timestamp = new Date().toISOString();
 
-      // Display coords on screen + geofence check
+      // Show the live data
       showCoords(latitude, longitude, accuracy, timestamp);
-      showGeofenceResult(latitude, longitude, accuracy);
-      setHero('Location Captured ✓', 'Sending data to server…');
+      setHero('Location Captured ✓', 'Sending to server…');
+      setStatus('loading', '☁️ Sending coordinates to server…');
 
-      // Build payload
-      const payload = {
-        name: currentUser,
-        latitude,
-        longitude,
-        timestamp,
-      };
+      const payload = { name: currentUser, latitude, longitude, timestamp };
 
       try {
-        setStatus('loading', '☁️ Sending to server…');
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -251,38 +227,29 @@ function handleSendLocation() {
         });
 
         if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.error || `Server error ${response.status}`);
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error || `HTTP ${response.status}`);
         }
 
         const result = await response.json();
-
-        // Success
-        setStatus('success', `✅ Location sent! Entry #${result.entry?.id ?? '—'} recorded.`);
+        setStatus('success', `✅ Sent! Entry <strong>#${result.entry?.id ?? '—'}</strong> logged on server.`);
         setHero('All Good! 🎉', 'Your coordinates were logged on the server.');
-        addLogEntry(latitude, longitude, timestamp);
+        addLogEntry(latitude, longitude, accuracy, timestamp);
 
       } catch (err) {
-        setStatus('error', `❌ Failed to send: ${err.message}`);
-        setHero('Send Failed', 'Coordinates captured but server unreachable.');
+        showErrorFallback('SERVER', `Could not reach server: ${err.message}`);
+        setHero('Send Failed', 'GPS captured but server unreachable.');
       } finally {
         resetButton();
       }
     },
     (error) => {
-      let msg = '❌ Could not get location.';
-      if (error.code === error.PERMISSION_DENIED)
-        msg = '❌ Location permission denied. Please allow GPS access.';
-      else if (error.code === error.POSITION_UNAVAILABLE)
-        msg = '❌ GPS signal unavailable. Try stepping outside.';
-      else if (error.code === error.TIMEOUT)
-        msg = '⏱️ GPS timed out. Ensure location services are on and try again.';
-
-      setStatus('error', msg);
-      setHero('GPS Error', 'Could not retrieve your position.');
-      resetButton();
+      if (error.code === error.PERMISSION_DENIED)      showErrorFallback('PERMISSION');
+      else if (error.code === error.POSITION_UNAVAILABLE) showErrorFallback('UNAVAILABLE');
+      else if (error.code === error.TIMEOUT)           showErrorFallback('TIMEOUT');
+      else showErrorFallback('UNAVAILABLE', `Unknown GPS error (code ${error.code}).`);
     },
-    geoOptions
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
